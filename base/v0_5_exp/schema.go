@@ -250,11 +250,12 @@ type Tree struct {
 }
 
 type Unit struct {
-	Contents *string  `yaml:"contents"`
-	Dropins  []Dropin `yaml:"dropins"`
-	Enabled  *bool    `yaml:"enabled"`
-	Mask     *bool    `yaml:"mask"`
-	Name     string   `yaml:"name"`
+	Contents     *string  `yaml:"contents"`
+	ContentsFile *string  `yaml:"contents_file"`
+	Dropins      []Dropin `yaml:"dropins"`
+	Enabled      *bool    `yaml:"enabled"`
+	Mask         *bool    `yaml:"mask"`
+	Name         string   `yaml:"name"`
 }
 
 type Verification struct {

@@ -15,6 +15,7 @@
 package v0_5_exp
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	slashpath "path"
@@ -91,6 +92,7 @@ func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Conf
 	tr.AddCustomTranslator(translateDirectory)
 	tr.AddCustomTranslator(translateLink)
 	tr.AddCustomTranslator(translateResource)
+	tr.AddCustomTranslator(translateSystemd)
 
 	tm, r := translate.Prefixed(tr, "ignition", &c.Ignition, &ret.Ignition)
 	tm.AddTranslation(path.New("yaml", "version"), path.New("json", "ignition", "version"))
@@ -214,6 +216,42 @@ func translateLink(from Link, options common.TranslateOptions) (to types.Link, t
 	translate.MergeP(tr, tm, &r, "hard", &from.Hard, &to.Hard)
 	translate.MergeP(tr, tm, &r, "overwrite", &from.Overwrite, &to.Overwrite)
 	translate.MergeP(tr, tm, &r, "path", &from.Path, &to.Path)
+	return
+}
+
+func translateSystemd(from Systemd, options common.TranslateOptions) (to types.Systemd, tm translate.TranslationSet, r report.Report) {
+	tr := translate.NewTranslator("yaml", "json", options)
+	tr.AddCustomTranslator(translateSystemdUnit)
+	tm, r = translate.Prefixed(tr, "unit", &from.Units, &to.Units)
+
+	return
+}
+
+func translateSystemdUnit(from Unit, options common.TranslateOptions) (to types.Unit, tm translate.TranslationSet, r report.Report) {
+	tr := translate.NewTranslator("yaml", "json", options)
+	tm, r = translate.Prefixed(tr, "name", &from.Name, &to.Name)
+	translate.MergeP(tr, tm, &r, "dropins", &from.Dropins, &to.Dropins)
+	translate.MergeP(tr, tm, &r, "enabled", &from.Enabled, &to.Enabled)
+	translate.MergeP(tr, tm, &r, "mask", &from.Mask, &to.Mask)
+
+	if from.Contents != nil && from.ContentsFile != nil {
+		c := path.New("systemd.units[" + from.Name + "].Contents")
+		r.AddOnError(c, errors.New("cannot have both inline + file for unit contents"))
+		return
+	}
+
+	if from.ContentsFile != nil {
+		c, err := os.ReadFile(options.FilesDir + *from.ContentsFile)
+		if err != nil {
+			c := path.New("systemd.units[" + from.Name + "].Contents")
+			r.AddOnError(c, err)
+			return
+		}
+
+		from.Contents = util.StrToPtr(string(c))
+	}
+	translate.MergeP(tr, tm, &r, "contents", &from.Contents, &to.Contents)
+
 	return
 }
 
